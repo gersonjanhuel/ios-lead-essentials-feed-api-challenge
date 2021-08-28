@@ -25,46 +25,53 @@ public final class RemoteFeedLoader: FeedLoader {
 
 			switch result {
 			case let .success((data, response)):
-				guard response.statusCode == 200 else {
-					return completion(.failure(Error.invalidData))
-				}
-
-				// decode process
-				if let root = try? JSONDecoder().decode(Root.self, from: data) {
-					completion(.success(root.feedImages))
-				} else {
-					return completion(.failure(Error.invalidData))
-				}
+				completion(FeedImagesMapper.map(data,response))
 
 			default:
 				completion(.failure(Error.connectivity))
 			}
 		}
 	}
+	
+	private final class FeedImagesMapper {
+		private struct Root: Decodable {
+			var items: [Image]
 
-	private struct Root: Decodable {
-		var items: [Image]
-
-		var feedImages: [FeedImage] {
-			return items.map { $0.feedImage }
+			var feedImages: [FeedImage] {
+				return items.map { $0.feedImage }
+			}
 		}
+
+		private struct Image: Decodable {
+			let id: UUID
+			let imageDesc: String?
+			let imageLoc: String?
+			let imageURL: URL
+
+			enum CodingKeys: String, CodingKey {
+				case id = "image_id"
+				case imageDesc = "image_desc"
+				case imageLoc = "image_loc"
+				case imageURL = "image_url"
+			}
+
+			var feedImage: FeedImage {
+				return FeedImage(id: id, description: imageDesc, location: imageLoc, url: imageURL)
+			}
+		}
+		
+		static func map(_ data: Data, _ response: HTTPURLResponse) -> FeedLoader.Result {
+			guard response.statusCode == 200 else {
+				return .failure(Error.invalidData)
+			}
+			
+			if let root = try? JSONDecoder().decode(Root.self, from: data) {
+				return .success(root.feedImages)
+			} else {
+				return .failure(Error.invalidData)
+			}
+		}
+		
 	}
-
-	private struct Image: Decodable {
-		let id: UUID
-		let imageDesc: String?
-		let imageLoc: String?
-		let imageURL: URL
-
-		enum CodingKeys: String, CodingKey {
-			case id = "image_id"
-			case imageDesc = "image_desc"
-			case imageLoc = "image_loc"
-			case imageURL = "image_url"
-		}
-
-		var feedImage: FeedImage {
-			return FeedImage(id: id, description: imageDesc, location: imageLoc, url: imageURL)
-		}
-	}
+	
 }
