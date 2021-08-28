@@ -19,7 +19,10 @@ public final class RemoteFeedLoader: FeedLoader {
 	}
 
 	public func load(completion: @escaping (FeedLoader.Result) -> Void) {
-		client.get(from: url) { result in
+		client.get(from: url) { [weak self] result in
+			// to prevent memory leak
+			guard self != nil else { return }
+
 			switch result {
 			case let .success((data, response)):
 				guard response.statusCode == 200 else {
