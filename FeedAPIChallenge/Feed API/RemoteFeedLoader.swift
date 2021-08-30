@@ -20,7 +20,6 @@ public final class RemoteFeedLoader: FeedLoader {
 
 	public func load(completion: @escaping (FeedLoader.Result) -> Void) {
 		client.get(from: url) { [weak self] result in
-			// to prevent memory leak
 			guard self != nil else { return }
 
 			switch result {
